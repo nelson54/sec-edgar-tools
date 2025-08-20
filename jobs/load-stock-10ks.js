@@ -12,9 +12,14 @@ async function loadAll10Ks() {
 
     try {
         const batches = chunkArray(tickers, 10)
-
+        let position = 1;
         for (let batch of batches) {
+            let progress = Math.round((position/batches.length) * 100);
+
+            console.log(`Processing batch ${position} of ${batches.length} \n${progress}% complete`);
             await processStockBatch(client, batch)
+
+            position++;
         }
     } catch (e) {
         console.dir(e)
@@ -29,14 +34,16 @@ async function delay(ms) {
 }
 
 async function processStockBatch(client, batch) {
-    console.log('processing batch')
+    console.log('Processing batch')
     console.dir(batch)
 
     for ( let ticker of batch) {
         try {
             await readAndStoreTicker(client, ticker)
         } catch (e) {
-            console.log(`Unable to process symbol: ${ticker}`)
+            // console.log(`Unable to process symbol: ${ticker}`)
+            await client.del(`reports:${ticker}`)
+
         }
     }
 
@@ -48,7 +55,8 @@ async function readAndStoreTicker(client, ticker) {
     const reports = await secEdgarApi.getReports({symbol: ticker})
     //console.dir(report)
 
-    for(let report of reports) {
+    for(let i = 0; i < reports.length; i++) {
+        let report = reports[i]
         await client.hSet(`reports:${ticker}`, `${report.fiscalYear}:${report.fiscalPeriod}`, JSON.stringify(report));
     }
 }
